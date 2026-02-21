@@ -11,10 +11,15 @@ export interface GridNode {
   currentLoad: number;
   status: NodeStatus;
   connections: string[]; // IDs of connected nodes
-  position: [number, number, number]; // 3D placement
+  position: [number, number, number]; // 3D placement (kept for compatibility)
+  lat: number; // Mapbox latitude
+  lng: number; // Mapbox longitude
   baseLoad: number; // For consumer nodes
   generation: number; // For generator nodes
 }
+
+// Neighborhood center for Mapbox (downtown San Francisco)
+export const MAP_CENTER = { lat: 37.7749, lng: -122.4194 } as const;
 
 export interface SimulationEvents {
   heatwaveIntensity: number; // 0 to 1
@@ -91,25 +96,23 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   },
 
   initGrid: () => {
-    // Generate an initial node map
+    const { lat, lng } = MAP_CENTER;
     const newNodes: Record<string, GridNode> = {};
-    
-    // Core Generation
+
+    // Core Generation - real lat/lng in downtown SF neighborhood
     newNodes['plant_1'] = {
       id: 'plant_1', type: 'power_plant', name: 'Main Gas Plant',
       capacity: 1000, currentLoad: 0, status: 'normal',
       connections: ['sub_north', 'sub_south', 'sub_east', 'sub_west'],
-      position: [0, 0, -10], baseLoad: 0, generation: 1000
+      position: [0, 0, 0], lat, lng, baseLoad: 0, generation: 1000
     };
 
-    // Main Substations
     const baseSubstationParams = { capacity: 250, baseLoad: 120, generation: 0, status: 'normal' as NodeStatus };
-    newNodes['sub_north'] = { id: 'sub_north', type: 'substation', name: 'North Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_east', 'sub_west'], position: [0, 0, -5] };
-    newNodes['sub_south'] = { id: 'sub_south', type: 'substation', name: 'South Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_east', 'sub_west'], position: [0, 0, 5] };
-    newNodes['sub_east'] = { id: 'sub_east', type: 'substation', name: 'East Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_north', 'sub_south'], position: [5, 0, 0] };
-    newNodes['sub_west'] = { id: 'sub_west', type: 'substation', name: 'West Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_north', 'sub_south'], position: [-5, 0, 0] };
+    newNodes['sub_north'] = { id: 'sub_north', type: 'substation', name: 'North Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_east', 'sub_west'], position: [0, 0, 0], lat: lat + 0.0018, lng };
+    newNodes['sub_south'] = { id: 'sub_south', type: 'substation', name: 'South Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_east', 'sub_west'], position: [0, 0, 0], lat: lat - 0.0018, lng };
+    newNodes['sub_east'] = { id: 'sub_east', type: 'substation', name: 'East Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_north', 'sub_south'], position: [0, 0, 0], lat, lng: lng + 0.00175 };
+    newNodes['sub_west'] = { id: 'sub_west', type: 'substation', name: 'West Substation', ...baseSubstationParams, currentLoad: 0, connections: ['plant_1', 'sub_north', 'sub_south'], position: [0, 0, 0], lat, lng: lng - 0.0021 };
 
-    // Set initial
     set({ nodes: newNodes, events: { ...INITIAL_EVENTS } });
     get().tickSim();
   },
@@ -159,7 +162,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             newNodes['datacenter'] = {
                 id: 'datacenter', type: 'data_center', name: 'Cloud Region West',
                 capacity: 300, currentLoad: 250, status: 'normal',
-                connections: ['sub_west'], position: [-8, 0, 2],
+                connections: ['sub_west'], position: [0, 0, 0],
+                lat: MAP_CENTER.lat - 0.0011, lng: MAP_CENTER.lng - 0.0021,
                 baseLoad: 250, generation: 0
             };
         }
@@ -174,7 +178,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             newNodes['solar_farm'] = {
                 id: 'solar_farm', type: 'solar_farm', name: 'Valley Solar Array',
                 capacity: 200, currentLoad: 0, status: 'normal',
-                connections: ['sub_east'], position: [8, 0, -2],
+                connections: ['sub_east'], position: [0, 0, 0],
+                lat: MAP_CENTER.lat + 0.0013, lng: MAP_CENTER.lng + 0.0019,
                 baseLoad: 0, generation: 200
             };
         }
@@ -193,7 +198,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
             newNodes['battery_mgr'] = {
                 id: 'battery_mgr', type: 'battery_storage', name: 'City Megapack',
                 capacity: 150, currentLoad: 0, status: 'normal',
-                connections: ['sub_south'], position: [2, 0, 8],
+                connections: ['sub_south'], position: [0, 0, 0],
+                lat: MAP_CENTER.lat - 0.0007, lng: MAP_CENTER.lng + 0.0009,
                 baseLoad: 0, generation: 150
             };
         }

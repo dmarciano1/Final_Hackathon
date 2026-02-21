@@ -22,24 +22,24 @@ export default function Home() {
 
   return (
     <main className="relative h-screen w-screen overflow-hidden bg-black text-white selection:bg-[#64FFDA]/30">
-      {/* Full-screen 3D simulation */}
+      {/* 3D City Map - The App (full viewport) */}
       <div className="absolute inset-0 z-0">
         <CityMap />
       </div>
 
-      {/* Overlay UI */}
+      {/* Overlays - Floating UI on top of the simulation */}
       <div className="absolute inset-0 z-10 pointer-events-none">
-        {/* Top: compact dashboard stats */}
+        {/* Dashboard overlay - top */}
         <div className="pointer-events-auto absolute top-4 left-4 right-4">
           <Dashboard />
         </div>
 
-        {/* Bottom-left: collapsible control panel */}
+        {/* Control Panel overlay - bottom left */}
         <div className="pointer-events-auto absolute bottom-4 left-4">
           <ControlPanel />
         </div>
 
-        {/* Bottom-right: collapsible AI chat */}
+        {/* AI Chat overlay - bottom right */}
         <div className="pointer-events-auto absolute bottom-4 right-4">
           <AIChat />
         </div>
