@@ -4,13 +4,46 @@ import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
-import Map from "react-map-gl/mapbox";
+import Map, { Layer } from "react-map-gl/mapbox";
+import type { FillExtrusionLayer } from "mapbox-gl";
 import { Canvas, coordsToVector3 } from "react-three-map";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useSimulationStore, GridNode, MAP_CENTER } from "../store/useSimulationStore";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const ORIGIN = { latitude: MAP_CENTER.lat, longitude: MAP_CENTER.lng };
+
+const buildingsLayer: FillExtrusionLayer = {
+  id: "3d-buildings",
+  source: "composite",
+  "source-layer": "building",
+  filter: ["==", "extrude", "true"],
+  type: "fill-extrusion",
+  minzoom: 15,
+  paint: {
+    "fill-extrusion-color": "#1f2937", // Matching the dark theme
+    "fill-extrusion-height": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      15,
+      0,
+      15.05,
+      ["get", "height"],
+    ],
+    "fill-extrusion-base": [
+      "interpolate",
+      ["linear"],
+      ["zoom"],
+      15,
+      0,
+      15.05,
+      ["get", "min_height"],
+    ],
+    "fill-extrusion-opacity": 0.6,
+  },
+};
+
 
 export default function CityMap() {
   const { nodes } = useSimulationStore();
@@ -50,6 +83,7 @@ export default function CityMap() {
       terrain={{ source: "mapbox", exaggeration: 1 }}
       style={{ width: "100%", height: "100%" }}
     >
+      <Layer {...buildingsLayer} />
       <Canvas
         latitude={MAP_CENTER.lat}
         longitude={MAP_CENTER.lng}
