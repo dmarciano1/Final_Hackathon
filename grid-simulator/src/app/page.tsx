@@ -7,6 +7,7 @@ import BottomControlBox from '@/components/BottomControlBox';
 import TopBar from '@/components/TopBar';
 import SettingsPanel from '@/components/SettingsPanel';
 import AIChat from '@/components/AIChat';
+import InfrastructurePalette from '@/components/InfrastructurePalette';
 import dynamic from 'next/dynamic';
 import { MapProvider } from 'react-map-gl/mapbox';
 
@@ -38,12 +39,16 @@ export default function Home() {
           {/* Top Area: Dashboard (Left) and TopBar (Right) */}
           <div className="flex justify-between items-start w-full">
             <div className="pointer-events-auto">
-              {/* Keeping the high-level dashboard metrics on the top left */}
               <Dashboard />
             </div>
             <div className="pointer-events-auto">
               <TopBar onOpenSettings={() => setIsSettingsOpen(true)} />
             </div>
+          </div>
+
+          {/* Middle: Infrastructure Palette (Left) */}
+          <div className="absolute left-6 top-1/2 -translate-y-1/2 z-20">
+            <InfrastructurePalette />
           </div>
 
           {/* Bottom Area: Scrubber (Center) and AI (Right) */}

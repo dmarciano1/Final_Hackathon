@@ -1,15 +1,19 @@
 import { create } from 'zustand';
 export * from './types';
-import { GridNode, MAP_CENTER } from './types';
+import { GridNode, MAP_CENTER, NodeType, INFRASTRUCTURE_BLUEPRINTS } from './types';
 import { MetricSlice, createMetricSlice } from './slices/metricSlice';
 import { FilterSlice, createFilterSlice } from './slices/filterSlice';
 
 export interface SimulationStore extends MetricSlice, FilterSlice {
   nodes: Record<string, GridNode>;
   theme: 'light' | 'dark';
+  placementMode: NodeType | null;
 
   // Actions
   setTheme: (theme: 'light' | 'dark') => void;
+  setPlacementMode: (mode: NodeType | null) => void;
+  addNode: (type: NodeType, lat: number, lng: number) => void;
+  removeNode: (id: string) => void;
   tickSim: () => void;
   resetSim: () => void;
   initGrid: () => void;
@@ -22,8 +26,66 @@ export const useSimulationStore = create<SimulationStore>()((...a) => ({
 
   nodes: {},
   theme: 'dark',
+  placementMode: null,
 
   setTheme: (theme) => a[0]({ theme }),
+  setPlacementMode: (mode) => a[0]({ placementMode: mode }),
+
+  addNode: (type, lat, lng) => {
+    const blueprint = INFRASTRUCTURE_BLUEPRINTS.find(b => b.type === type);
+    if (!blueprint) return;
+
+    const id = `${type}_${Date.now()}`;
+    const state = a[1]();
+    const existingNodes = Object.values(state.nodes);
+
+    const nearest = existingNodes
+      .map(n => ({ id: n.id, dist: Math.hypot(n.lat - lat, n.lng - lng) }))
+      .sort((a, b) => a.dist - b.dist)
+      .slice(0, 2)
+      .map(n => n.id);
+
+    const newNode: GridNode = {
+      id,
+      type,
+      name: `${blueprint.label} ${Object.values(state.nodes).filter(n => n.type === type).length + 1}`,
+      capacity: blueprint.defaultCapacity,
+      currentLoad: 0,
+      status: 'normal',
+      connections: nearest,
+      lat,
+      lng,
+      baseLoad: blueprint.defaultBaseLoad,
+      generation: blueprint.defaultGeneration,
+    };
+
+    const newNodes = { ...state.nodes, [id]: newNode };
+    nearest.forEach(nId => {
+      if (newNodes[nId]) {
+        newNodes[nId] = { ...newNodes[nId], connections: [...newNodes[nId].connections, id] };
+      }
+    });
+
+    a[0]({ nodes: newNodes, placementMode: null });
+    a[1]().tickSim();
+  },
+
+  removeNode: (id) => {
+    const state = a[1]();
+    const newNodes = { ...state.nodes };
+    const removed = newNodes[id];
+    if (!removed) return;
+
+    delete newNodes[id];
+    Object.values(newNodes).forEach(node => {
+      if (node.connections.includes(id)) {
+        newNodes[node.id] = { ...node, connections: node.connections.filter(c => c !== id) };
+      }
+    });
+
+    a[0]({ nodes: newNodes });
+    a[1]().tickSim();
+  },
 
   recoverNode: (id) => {
     // ... existing logic will be ported to citySlice
@@ -76,7 +138,6 @@ export const useSimulationStore = create<SimulationStore>()((...a) => ({
     const temp = getVal('wx_temp', 72) as number;
     const heatwave = 1 + (temp > 85 ? (temp - 85) * 0.02 : 0);
 
-    // Basic recalc
     Object.values(newNodes).forEach(node => {
       if (node.status === 'offline') {
         failedNodes++;
@@ -84,28 +145,55 @@ export const useSimulationStore = create<SimulationStore>()((...a) => ({
         return;
       }
 
-      if (node.type === 'power_plant') {
-        node.generation = 1000;
-        activeGeneration += node.generation;
-      }
-
-      if (node.type === 'substation') {
-        node.currentLoad = node.baseLoad * growth * heatwave;
+      switch (node.type) {
+        case 'power_plant':
+        case 'nuclear_plant':
+        case 'hydro_plant':
+          node.generation = node.capacity;
+          activeGeneration += node.generation;
+          break;
+        case 'wind_farm':
+        case 'solar_farm':
+          node.generation = node.capacity;
+          activeGeneration += node.generation;
+          break;
+        case 'battery_storage':
+          node.generation = node.capacity * 0.5;
+          activeGeneration += node.generation;
+          break;
+        case 'microgrid':
+          node.generation = node.capacity * 0.6;
+          activeGeneration += node.generation;
+          node.currentLoad = node.baseLoad * growth;
+          totalDemand += node.currentLoad;
+          break;
+        case 'substation':
+          node.currentLoad = node.baseLoad * growth * heatwave;
+          totalDemand += node.currentLoad;
+          break;
+        case 'data_center':
+          node.currentLoad = node.baseLoad * heatwave;
+          totalDemand += node.currentLoad;
+          break;
+        case 'ev_charging_hub':
+          node.currentLoad = node.baseLoad * growth;
+          totalDemand += node.currentLoad;
+          break;
+        case 'hospital':
+          node.currentLoad = node.baseLoad * growth;
+          totalDemand += node.currentLoad;
+          break;
+        case 'stadium':
+          node.currentLoad = node.baseLoad * growth;
+          totalDemand += node.currentLoad;
+          break;
       }
     });
 
-    // Special: Data Center
     if ((getVal('dc_load', 0) as number) > 0) {
       if (newNodes['sub_west']) newNodes['sub_west'].currentLoad += dcLoad;
       totalDemand += dcLoad;
     }
-
-    // Tally and Metrics
-    Object.values(newNodes).forEach(node => {
-      if (node.type === 'substation' && node.status !== 'offline') {
-        totalDemand += node.currentLoad;
-      }
-    });
 
     const totalNodes = Object.keys(newNodes).length;
     const stability = Math.max(0, 100 - (failedNodes / totalNodes) * 100);
