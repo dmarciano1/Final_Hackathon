@@ -5,11 +5,12 @@ import { Play, Pause, SkipForward, RotateCcw, MonitorPlay, Activity } from "luci
 import { useState } from "react";
 
 export default function BottomControlBox() {
-    const { events, resetSim } = useSimulationStore();
+    const { activeFilters, resetSim } = useSimulationStore();
     const [isPlaying, setIsPlaying] = useState(true);
 
-    // Mock progress calculation for the scrubber based on time of day (0-24)
-    const progressPercent = (events.timeOfDay / 24) * 100;
+    const timeOfDayFilter = activeFilters.find(f => f.id === 'timeOfDay');
+    const timeOfDay = typeof timeOfDayFilter?.value === 'number' ? timeOfDayFilter.value : 12;
+    const progressPercent = (timeOfDay / 24) * 100;
 
     return (
         <div className="w-[800px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden flex flex-col pointer-events-auto">
@@ -37,7 +38,7 @@ export default function BottomControlBox() {
                 <div className="flex-1 flex flex-col gap-1.5 justify-center">
                     <div className="flex justify-between items-end">
                         <span className="text-xs font-medium text-white font-mono">
-                            {String(Math.floor(events.timeOfDay)).padStart(2, '0')}:00
+                            {String(Math.floor(timeOfDay)).padStart(2, '0')}:00
                         </span>
                         <div className="flex gap-2">
                             <span className="text-[10px] uppercase font-bold text-[#f59e0b] bg-[#f59e0b]/20 px-1.5 py-0.5 rounded">Heat Peak</span>

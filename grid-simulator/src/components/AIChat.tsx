@@ -7,7 +7,7 @@ import { Send, AlertTriangle, MessageSquare, X } from "lucide-react";
 
 export default function AIChat() {
     const { messages, input, handleInputChange, handleSubmit, append } = useChat();
-    const { nodes, events, metrics } = useSimulationStore();
+    const { nodes, metrics, activeFilters } = useSimulationStore();
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const [expanded, setExpanded] = useState(false);
 
@@ -17,8 +17,7 @@ export default function AIChat() {
 
     const gridStateSummary = JSON.stringify({
         metrics,
-        events,
-        activeFilters: useSimulationStore.getState().filters.map(f => f.label),
+        activeFilters: activeFilters.map(f => f.label),
         criticalNodes: Object.values(nodes)
             .filter((n) => n.status === "warning" || n.status === "offline")
             .map((n) => ({
@@ -91,8 +90,8 @@ export default function AIChat() {
                         <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                             <div
                                 className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === "user"
-                                        ? "bg-blue-500/20 text-blue-100 border border-blue-500/30"
-                                        : "bg-black/40 text-gray-200 border border-white/10 shadow-inner"
+                                    ? "bg-blue-500/20 text-blue-100 border border-blue-500/30"
+                                    : "bg-black/40 text-gray-200 border border-white/10 shadow-inner"
                                     }`}
                             >
                                 {m.role === "assistant" && m.content.includes("CRITICAL") && (

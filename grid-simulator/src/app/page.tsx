@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useSimulationStore } from '@/store/useSimulationStore';
 import Dashboard from '@/components/Dashboard';
 import BottomControlBox from '@/components/BottomControlBox';
-import FilterSearch from '@/components/FilterSearch';
+import TopBar from '@/components/TopBar';
+import SettingsPanel from '@/components/SettingsPanel';
 import AIChat from '@/components/AIChat';
 import dynamic from 'next/dynamic';
+import { MapProvider } from 'react-map-gl/mapbox';
 
 const CityMap = dynamic(() => import('@/components/CityMap'), { ssr: false });
 
 export default function Home() {
   const { initGrid, tickSim } = useSimulationStore();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     initGrid();
@@ -22,41 +25,44 @@ export default function Home() {
   }, [initGrid, tickSim]);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-black text-white selection:bg-[#64FFDA]/30">
-      {/* 3D City Map - The App (full viewport) */}
-      <div className="absolute inset-0 z-0">
-        <CityMap />
-      </div>
+    <MapProvider>
+      <main className="relative h-screen w-screen overflow-hidden bg-background text-foreground transition-colors duration-500">
+        {/* 3D City Map - The App (full viewport) */}
+        <div className="absolute inset-0 z-0">
+          <CityMap />
+        </div>
 
-      {/* Overlays - Floating UI on top of the simulation */}
-      <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
+        {/* Overlays - Floating UI on top of the simulation */}
+        <div className="absolute inset-0 z-10 pointer-events-none flex flex-col justify-between p-6">
 
-        {/* Top Area: Dashboard (Left) and Filters (Right) */}
-        <div className="flex justify-between items-start w-full">
-          <div className="pointer-events-auto">
-            {/* Keeping the high-level dashboard metrics on the top left */}
-            <Dashboard />
+          {/* Top Area: Dashboard (Left) and TopBar (Right) */}
+          <div className="flex justify-between items-start w-full">
+            <div className="pointer-events-auto">
+              {/* Keeping the high-level dashboard metrics on the top left */}
+              <Dashboard />
+            </div>
+            <div className="pointer-events-auto">
+              <TopBar onOpenSettings={() => setIsSettingsOpen(true)} />
+            </div>
           </div>
-          <div className="pointer-events-auto">
-            <FilterSearch />
+
+          {/* Bottom Area: Scrubber (Center) and AI (Right) */}
+          <div className="flex justify-between items-end w-full">
+            <div className="w-[300px]" />
+
+            <div className="pointer-events-auto flex-1 flex justify-center mb-4">
+              <BottomControlBox />
+            </div>
+
+            <div className="pointer-events-auto mb-4 w-[350px]">
+              <AIChat />
+            </div>
           </div>
         </div>
 
-        {/* Bottom Area: Scrubber (Center) and AI (Right) */}
-        <div className="flex justify-between items-end w-full">
-          {/* Empty spacer for flex alignment if we want the bottom box centered */}
-          <div className="w-[300px]" />
-
-          <div className="pointer-events-auto flex-1 flex justify-center mb-4">
-            <BottomControlBox />
-          </div>
-
-          <div className="pointer-events-auto mb-4 w-[350px]">
-            <AIChat />
-          </div>
-        </div>
-
-      </div>
-    </main>
+        {/* Settings Fly-out */}
+        <SettingsPanel isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      </main>
+    </MapProvider>
   );
 }

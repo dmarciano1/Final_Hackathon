@@ -9,6 +9,7 @@ import type { FillExtrusionLayer } from "mapbox-gl";
 import { Canvas, coordsToVector3 } from "react-three-map";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useSimulationStore, GridNode, MAP_CENTER } from "../store/useSimulationStore";
+import { useTheme } from "next-themes";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const ORIGIN = { latitude: MAP_CENTER.lat, longitude: MAP_CENTER.lng };
@@ -47,6 +48,7 @@ const buildingsLayer: FillExtrusionLayer = {
 
 export default function CityMap() {
   const { nodes } = useSimulationStore();
+  const { theme } = useTheme();
 
   const lines = useMemo(() => {
     const pairs: [GridNode, GridNode][] = [];
@@ -79,7 +81,7 @@ export default function CityMap() {
         pitch: 60,
         bearing: 0,
       }}
-      mapStyle="mapbox://styles/mapbox/dark-v11"
+      mapStyle={theme === 'dark' ? "mapbox://styles/mapbox/dark-v11" : "mapbox://styles/mapbox/light-v11"}
       terrain={{ source: "mapbox", exaggeration: 1 }}
       style={{ width: "100%", height: "100%" }}
     >
