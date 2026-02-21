@@ -23,28 +23,28 @@ export default function Home() {
   }, [initGrid, tickSim]);
 
   return (
-    <main className="flex h-screen w-screen overflow-hidden bg-black text-white selection:bg-cyan-500/30">
+    <main className="relative h-screen w-screen overflow-hidden bg-black text-white selection:bg-[#64FFDA]/30">
 
       {/* 3D Background Layer */}
       <div className="absolute inset-0 z-0">
         <CityMap />
       </div>
 
-      {/* UI Overlay */}
-      <div className="z-10 flex flex-col w-full h-full pointer-events-none">
+      {/* UI Overlay - Using absolute positioning for floating elements */}
+      <div className="absolute inset-0 z-10 pointer-events-none p-6 flex flex-col justify-between">
 
-        {/* Top Dashboard */}
-        <div className="pointer-events-auto w-full">
+        {/* Top Dashboard - Floating */}
+        <div className="pointer-events-auto">
           <Dashboard />
         </div>
 
-        {/* Mid Section */}
-        <div className="flex-1 flex justify-between items-stretch overflow-hidden">
-          <div className="pointer-events-auto h-full hidden md:block">
+        {/* Bottom Section with Sidebars */}
+        <div className="flex-1 flex justify-between items-end mt-4 h-[calc(100vh-120px)] overflow-hidden">
+          <div className="pointer-events-auto h-full max-h-[800px] rounded-2xl shadow-2xl backdrop-blur-md">
             <ControlPanel />
           </div>
 
-          <div className="pointer-events-auto h-full hidden lg:block w-80">
+          <div className="pointer-events-auto h-full max-h-[800px] w-96 rounded-2xl shadow-2xl backdrop-blur-md">
             <AIChat />
           </div>
         </div>

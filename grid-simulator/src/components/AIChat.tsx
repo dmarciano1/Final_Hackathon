@@ -45,18 +45,18 @@ export default function AIChat() {
     };
 
     return (
-        <div className="w-80 bg-gray-900/90 backdrop-blur-md border-l border-gray-800 p-4 shrink-0 flex flex-col z-10 relative h-full">
-            <div className="flex items-center gap-2 mb-4 border-b border-gray-800 pb-2">
-                <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
-                <h2 className="text-lg font-bold text-gray-200">AI Grid Operator</h2>
+        <div className="w-96 h-full bg-[#0A192F]/80 backdrop-blur-md border border-[#112240] rounded-2xl p-6 flex flex-col shadow-lg z-10 relative">
+            <div className="flex items-center gap-3 mb-6 border-b border-[#112240] pb-4">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#64FFDA] animate-pulse shadow-[0_0_8px_#64FFDA]" />
+                <h2 className="text-xl font-bold text-white">Grid Operator AI</h2>
             </div>
 
             <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-2 custom-scrollbar">
                 {messages.filter((m: Message) => !m.content.startsWith('SYSTEM ALERT:')).map((m: Message) => (
                     <div key={m.id} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`max-w-[85%] rounded-lg p-3 text-sm ${m.role === 'user'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-800 border border-gray-700 text-gray-300'
+                        <div className={`max-w-[85%] rounded-xl p-3 text-sm leading-relaxed ${m.role === 'user'
+                                ? 'bg-[#112240] text-[#64FFDA] border border-[#233554]'
+                                : 'bg-transparent text-[#8892B0] border border-[#112240]'
                             }`}>
                             {m.role === 'assistant' && m.content.includes('CRITICAL') && (
                                 <AlertTriangle size={14} className="text-red-400 mb-1 inline mr-1" />
@@ -73,14 +73,14 @@ export default function AIChat() {
                     value={input}
                     onChange={handleInputChange}
                     placeholder="Ask Operator..."
-                    className="w-full bg-black/50 border border-gray-700 rounded-lg py-2 pl-3 pr-10 text-sm focus:outline-none focus:border-blue-500 text-gray-200"
+                    className="w-full bg-[#0A192F] border border-[#233554] rounded-xl py-3 pl-4 pr-12 text-sm focus:outline-none focus:border-[#64FFDA] text-white placeholder-[#8892B0] shadow-inner transition-colors"
                 />
                 <button
                     type="submit"
                     disabled={!input.trim()}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-blue-400 disabled:opacity-50"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-[#64FFDA] hover:text-white disabled:opacity-30 disabled:hover:text-[#64FFDA] transition-colors"
                 >
-                    <Send size={16} />
+                    <Send size={18} />
                 </button>
             </form>
         </div>

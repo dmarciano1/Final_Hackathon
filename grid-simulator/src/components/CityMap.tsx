@@ -62,8 +62,10 @@ export default function CityMap() {
             <OrbitControls
                 maxPolarAngle={Math.PI / 2 - 0.05}
                 minDistance={5}
-                maxDistance={40}
+                maxDistance={50}
                 enableDamping
+                autoRotate
+                autoRotateSpeed={0.5}
             />
         </Canvas>
     );
