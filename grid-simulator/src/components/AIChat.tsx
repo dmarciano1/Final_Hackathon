@@ -18,6 +18,7 @@ export default function AIChat() {
     const gridStateSummary = JSON.stringify({
         metrics,
         events,
+        activeFilters: useSimulationStore.getState().filters.map(f => f.label),
         criticalNodes: Object.values(nodes)
             .filter((n) => n.status === "warning" || n.status === "offline")
             .map((n) => ({
@@ -55,12 +56,12 @@ export default function AIChat() {
         return (
             <button
                 onClick={() => setExpanded(true)}
-                className="flex items-center gap-2 bg-black/60 backdrop-blur-lg border border-white/10 rounded-full px-4 py-2.5 text-sm font-semibold text-[#64FFDA] hover:bg-black/80 transition-all shadow-lg"
+                className="flex items-center gap-2 bg-black/40 backdrop-blur-md border border-white/10 rounded-full px-4 py-2.5 text-sm font-semibold text-gray-200 hover:bg-black/60 transition-all shadow-lg"
             >
-                <MessageSquare size={14} />
+                <MessageSquare size={14} className="text-blue-400" />
                 AI Operator
                 {unreadCount > 0 && (
-                    <span className="bg-[#64FFDA] text-black text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    <span className="bg-blue-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
                         {unreadCount}
                     </span>
                 )}
@@ -69,14 +70,14 @@ export default function AIChat() {
     }
 
     return (
-        <div className="w-80 h-[420px] bg-black/60 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+        <div className="w-80 h-[420px] bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
             {/* Header */}
             <button
                 onClick={() => setExpanded(false)}
                 className="w-full flex items-center justify-between px-5 py-3 border-b border-white/10 hover:bg-white/5 transition-colors flex-shrink-0"
             >
                 <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-[#64FFDA] animate-pulse shadow-[0_0_6px_#64FFDA]" />
+                    <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse shadow-[0_0_6px_rgba(59,130,246,0.6)]" />
                     <span className="text-sm font-bold text-white">Grid Operator AI</span>
                 </div>
                 <X size={14} className="text-gray-400" />
@@ -89,11 +90,10 @@ export default function AIChat() {
                     .map((m: Message) => (
                         <div key={m.id} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
                             <div
-                                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${
-                                    m.role === "user"
-                                        ? "bg-[#64FFDA]/15 text-[#64FFDA] border border-[#64FFDA]/20"
-                                        : "bg-white/5 text-gray-300 border border-white/10"
-                                }`}
+                                className={`max-w-[85%] rounded-xl px-3 py-2 text-xs leading-relaxed ${m.role === "user"
+                                        ? "bg-blue-500/20 text-blue-100 border border-blue-500/30"
+                                        : "bg-black/40 text-gray-200 border border-white/10 shadow-inner"
+                                    }`}
                             >
                                 {m.role === "assistant" && m.content.includes("CRITICAL") && (
                                     <AlertTriangle size={12} className="text-red-400 mb-1 inline mr-1" />

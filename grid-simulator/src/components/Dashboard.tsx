@@ -10,15 +10,15 @@ export default function Dashboard() {
         metrics.gridStability < 50
             ? "text-red-400"
             : metrics.gridStability < 80
-              ? "text-yellow-400"
-              : "text-white";
+                ? "text-yellow-400"
+                : "text-white";
 
     const stabilityBorder =
         metrics.gridStability < 50
             ? "border-red-500/40"
             : metrics.gridStability < 80
-              ? "border-yellow-500/40"
-              : "border-white/10";
+                ? "border-yellow-500/40"
+                : "border-white/10";
 
     return (
         <div className="flex gap-2 flex-wrap justify-center">
@@ -52,9 +52,9 @@ function Pill({
 }) {
     return (
         <div
-            className={`flex items-center gap-2 bg-black/50 backdrop-blur-lg border ${className} rounded-full px-4 py-2 shadow-lg`}
+            className={`flex items-center gap-2 bg-black/40 backdrop-blur-md border ${className} rounded-full px-4 py-2 shadow-lg`}
         >
-            <span className="text-[#64FFDA]">{icon}</span>
+            <span className="text-gray-300">{icon}</span>
             <span className="text-[10px] uppercase tracking-wider text-gray-400 font-semibold">{label}</span>
             <span className={`text-sm font-mono font-bold ${valueClassName}`}>{value}</span>
         </div>

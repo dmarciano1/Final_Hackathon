@@ -200,7 +200,7 @@ function TransmissionLine({
     return [new THREE.Vector3(...p1), new THREE.Vector3(...p2)];
   }, [source.lat, source.lng, target.lat, target.lng]);
 
-  let color = "#22d3ee";
+  let color = "#3b82f6";
   if (isOffline) color = "#1f2937";
   else if (isWarning) color = "#facc15";
 

@@ -1,5 +1,19 @@
 import { create } from 'zustand';
 
+export type FilterTheme = 'amber' | 'green' | 'teal' | 'cyan' | 'red' | 'violet' | 'indigo' | 'orange' | 'slate' | 'blue' | 'gray' | 'magenta';
+
+export interface GridFilter {
+  id: string; // The backend key (e.g. 'evSurgeActive', 'heatwaveIntensity')
+  label: string;
+  theme: FilterTheme;
+  type: 'toggle' | 'slider';
+  value: number | boolean;
+  min?: number;
+  max?: number;
+  step?: number;
+  category: string;
+}
+
 export type NodeType = 'power_plant' | 'substation' | 'data_center' | 'solar_farm' | 'battery_storage' | 'hospital' | 'stadium';
 export type NodeStatus = 'normal' | 'warning' | 'critical' | 'offline';
 
@@ -35,6 +49,7 @@ export interface SimulationEvents {
 interface SimulationStore {
   nodes: Record<string, GridNode>;
   events: SimulationEvents;
+  filters: GridFilter[]; // Active filters shown as chips
   metrics: {
     totalDemand: number;
     totalCapacity: number;
@@ -42,9 +57,12 @@ interface SimulationStore {
     carbonIntensity: number;
     costPerHr: number;
   };
-  
+
   // Actions
   updateEvent: <K extends keyof SimulationEvents>(key: K, value: SimulationEvents[K]) => void;
+  addFilter: (filter: GridFilter) => void;
+  removeFilter: (id: string) => void;
+  updateFilterValue: (id: string, value: number | boolean) => void;
   tickSim: () => void; // Called repeatedly or when state changes to recalculate grid
   resetSim: () => void;
   recoverNode: (id: string) => void;
@@ -66,6 +84,7 @@ const INITIAL_EVENTS: SimulationEvents = {
 export const useSimulationStore = create<SimulationStore>((set, get) => ({
   nodes: {},
   events: { ...INITIAL_EVENTS },
+  filters: [],
   metrics: {
     totalDemand: 0,
     totalCapacity: 0,
@@ -84,15 +103,64 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     get().tickSim(); // Immediately recalculate after event toggle
   },
 
+  addFilter: (filter: GridFilter) => {
+    set((state) => {
+      if (state.filters.find(f => f.id === filter.id)) return state;
+
+      const newEvents = { ...state.events };
+      // Safe mapping - apply filter default value to events when added
+      if (filter.id in newEvents) {
+        (newEvents as Record<string, unknown>)[filter.id] = filter.value;
+      }
+
+      return {
+        filters: [...state.filters, filter],
+        events: newEvents
+      };
+    });
+    get().tickSim();
+  },
+
+  removeFilter: (id: string) => {
+    set((state) => {
+      const newEvents = { ...state.events };
+
+      // Reset to initial state when removed
+      if (id in newEvents) {
+        (newEvents as Record<string, unknown>)[id] = INITIAL_EVENTS[id as keyof SimulationEvents];
+      }
+
+      return {
+        filters: state.filters.filter(f => f.id !== id),
+        events: newEvents
+      };
+    });
+    get().tickSim();
+  },
+
+  updateFilterValue: (id: string, value: number | boolean) => {
+    set((state) => {
+      const newFilters = state.filters.map(f => f.id === id ? { ...f, value } : f);
+      const newEvents = { ...state.events };
+
+      if (id in newEvents) {
+        (newEvents as Record<string, unknown>)[id] = value;
+      }
+
+      return { filters: newFilters, events: newEvents };
+    });
+    get().tickSim();
+  },
+
   recoverNode: (id) => {
-     set((state) => {
-       const newNodes = { ...state.nodes };
-       if (newNodes[id]) {
-         newNodes[id] = { ...newNodes[id], status: 'normal' };
-       }
-       return { nodes: newNodes };
-     });
-     get().tickSim();
+    set((state) => {
+      const newNodes = { ...state.nodes };
+      if (newNodes[id]) {
+        newNodes[id] = { ...newNodes[id], status: 'normal' };
+      }
+      return { nodes: newNodes };
+    });
+    get().tickSim();
   },
 
   initGrid: () => {
@@ -133,127 +201,127 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
     // Calculate node base changes
     Object.values(newNodes).forEach(node => {
-        // Skip base calculation if offline (or if type is generation only)
-        if (node.status === 'offline') {
-           failedNodes++;
-           node.currentLoad = 0;
-           return;
-        }
+      // Skip base calculation if offline (or if type is generation only)
+      if (node.status === 'offline') {
+        failedNodes++;
+        node.currentLoad = 0;
+        return;
+      }
 
-        if (node.type === 'power_plant') {
-           if (events.powerPlantOffline && node.id === 'plant_1') {
-               node.status = 'offline';
-               node.generation = 0;
-               failedNodes++;
-           } else {
-               node.generation = 1000; // Reset just in case
-               activeGeneration += node.generation;
-           }
+      if (node.type === 'power_plant') {
+        if (events.powerPlantOffline && node.id === 'plant_1') {
+          node.status = 'offline';
+          node.generation = 0;
+          failedNodes++;
+        } else {
+          node.generation = 1000; // Reset just in case
+          activeGeneration += node.generation;
         }
+      }
 
-        if (node.type === 'substation') {
-            node.currentLoad = node.baseLoad * timeFactor * heatwaveFactor * evFactor * indFactor;
-        }
+      if (node.type === 'substation') {
+        node.currentLoad = node.baseLoad * timeFactor * heatwaveFactor * evFactor * indFactor;
+      }
     });
 
     // Special additions
     if (events.dataCenterActive) {
-        if (!newNodes['datacenter']) {
-            newNodes['datacenter'] = {
-                id: 'datacenter', type: 'data_center', name: 'Cloud Region West',
-                capacity: 300, currentLoad: 250, status: 'normal',
-                connections: ['sub_west'], position: [0, 0, 0],
-                lat: MAP_CENTER.lat - 0.0011, lng: MAP_CENTER.lng - 0.0021,
-                baseLoad: 250, generation: 0
-            };
-        }
-        if (newNodes['sub_west']) newNodes['sub_west'].currentLoad += 150; // Drain from local substation
-        totalDemand += 250;
+      if (!newNodes['datacenter']) {
+        newNodes['datacenter'] = {
+          id: 'datacenter', type: 'data_center', name: 'Cloud Region West',
+          capacity: 300, currentLoad: 250, status: 'normal',
+          connections: ['sub_west'], position: [0, 0, 0],
+          lat: MAP_CENTER.lat - 0.0011, lng: MAP_CENTER.lng - 0.0021,
+          baseLoad: 250, generation: 0
+        };
+      }
+      if (newNodes['sub_west']) newNodes['sub_west'].currentLoad += 150; // Drain from local substation
+      totalDemand += 250;
     } else {
-        delete newNodes['datacenter'];
+      delete newNodes['datacenter'];
     }
 
     if (events.solarFarmActive && events.timeOfDay > 6 && events.timeOfDay < 19) {
-        if (!newNodes['solar_farm']) {
-            newNodes['solar_farm'] = {
-                id: 'solar_farm', type: 'solar_farm', name: 'Valley Solar Array',
-                capacity: 200, currentLoad: 0, status: 'normal',
-                connections: ['sub_east'], position: [0, 0, 0],
-                lat: MAP_CENTER.lat + 0.0013, lng: MAP_CENTER.lng + 0.0019,
-                baseLoad: 0, generation: 200
-            };
-        }
-        
-        let sunlight = Math.sin((events.timeOfDay - 6) * (Math.PI / 12)); // peaks at midday
-        if (sunlight < 0) sunlight = 0;
-        newNodes['solar_farm'].generation = 200 * sunlight;
-        activeGeneration += newNodes['solar_farm'].generation;
-        if (newNodes['sub_east']) newNodes['sub_east'].currentLoad = Math.max(0, newNodes['sub_east'].currentLoad - newNodes['solar_farm'].generation);
+      if (!newNodes['solar_farm']) {
+        newNodes['solar_farm'] = {
+          id: 'solar_farm', type: 'solar_farm', name: 'Valley Solar Array',
+          capacity: 200, currentLoad: 0, status: 'normal',
+          connections: ['sub_east'], position: [0, 0, 0],
+          lat: MAP_CENTER.lat + 0.0013, lng: MAP_CENTER.lng + 0.0019,
+          baseLoad: 0, generation: 200
+        };
+      }
+
+      let sunlight = Math.sin((events.timeOfDay - 6) * (Math.PI / 12)); // peaks at midday
+      if (sunlight < 0) sunlight = 0;
+      newNodes['solar_farm'].generation = 200 * sunlight;
+      activeGeneration += newNodes['solar_farm'].generation;
+      if (newNodes['sub_east']) newNodes['sub_east'].currentLoad = Math.max(0, newNodes['sub_east'].currentLoad - newNodes['solar_farm'].generation);
     } else {
-        delete newNodes['solar_farm'];
+      delete newNodes['solar_farm'];
     }
 
     if (events.batteryStorageActive) {
-        if (!newNodes['battery_mgr']) {
-            newNodes['battery_mgr'] = {
-                id: 'battery_mgr', type: 'battery_storage', name: 'City Megapack',
-                capacity: 150, currentLoad: 0, status: 'normal',
-                connections: ['sub_south'], position: [0, 0, 0],
-                lat: MAP_CENTER.lat - 0.0007, lng: MAP_CENTER.lng + 0.0009,
-                baseLoad: 0, generation: 150
-            };
-        }
-        activeGeneration += 150;
-        if (newNodes['sub_south']) newNodes['sub_south'].currentLoad = Math.max(0, newNodes['sub_south'].currentLoad - 80);
+      if (!newNodes['battery_mgr']) {
+        newNodes['battery_mgr'] = {
+          id: 'battery_mgr', type: 'battery_storage', name: 'City Megapack',
+          capacity: 150, currentLoad: 0, status: 'normal',
+          connections: ['sub_south'], position: [0, 0, 0],
+          lat: MAP_CENTER.lat - 0.0007, lng: MAP_CENTER.lng + 0.0009,
+          baseLoad: 0, generation: 150
+        };
+      }
+      activeGeneration += 150;
+      if (newNodes['sub_south']) newNodes['sub_south'].currentLoad = Math.max(0, newNodes['sub_south'].currentLoad - 80);
     } else {
-        delete newNodes['battery_mgr'];
+      delete newNodes['battery_mgr'];
     }
 
     // Cascade failure logic
     // We do a simple propagation. If any substation is > 100%, it goes offline and adds its load to neighbors
     let unstable = true;
     let iteration = 0;
-    while(unstable && iteration < 5) { // Prevent infinite loops
-        unstable = false;
-        Object.values(newNodes).forEach(node => {
-            if (node.type === 'substation' && node.status !== 'offline') {
-                if (node.currentLoad > node.capacity) {
-                    node.status = 'offline';
-                    unstable = true;
-                    // Distribute its load to connected active substations
-                    const activeNeighbors = node.connections
-                        .map(nid => newNodes[nid])
-                        .filter(n => n && n.type === 'substation' && n.status !== 'offline');
-                    
-                    if (activeNeighbors.length > 0) {
-                        const loadShare = node.currentLoad / activeNeighbors.length;
-                        activeNeighbors.forEach(n => {
-                            n.currentLoad += loadShare;
-                        });
-                    }
-                    node.currentLoad = 0; // It's offline now
-                } else if (node.currentLoad > node.capacity * 0.85) {
-                    node.status = 'warning';
-                } else {
-                    node.status = 'normal';
-                }
+    while (unstable && iteration < 5) { // Prevent infinite loops
+      unstable = false;
+      Object.values(newNodes).forEach(node => {
+        if (node.type === 'substation' && node.status !== 'offline') {
+          if (node.currentLoad > node.capacity) {
+            node.status = 'offline';
+            unstable = true;
+            // Distribute its load to connected active substations
+            const activeNeighbors = node.connections
+              .map(nid => newNodes[nid])
+              .filter(n => n && n.type === 'substation' && n.status !== 'offline');
+
+            if (activeNeighbors.length > 0) {
+              const loadShare = node.currentLoad / activeNeighbors.length;
+              activeNeighbors.forEach(n => {
+                n.currentLoad += loadShare;
+              });
             }
-        });
-        iteration++;
+            node.currentLoad = 0; // It's offline now
+          } else if (node.currentLoad > node.capacity * 0.85) {
+            node.status = 'warning';
+          } else {
+            node.status = 'normal';
+          }
+        }
+      });
+      iteration++;
     }
 
     // Tally up
     Object.values(newNodes).forEach(node => {
-        if (node.type === 'substation' && node.status !== 'offline') {
-            totalDemand += node.currentLoad;
-        }
+      if (node.type === 'substation' && node.status !== 'offline') {
+        totalDemand += node.currentLoad;
+      }
     });
 
     // Calculate metrics
     const baseCarbon = 450; // gCO2/kWh gas base
     const totalNodes = Object.keys(newNodes).filter(k => newNodes[k].type === 'substation' || newNodes[k].type === 'power_plant').length;
     const stability = Math.max(0, 100 - (failedNodes / totalNodes) * 100);
-    
+
     let carbonIntensity = baseCarbon;
     if (events.solarFarmActive) carbonIntensity -= 50;
     if (events.batteryStorageActive) carbonIntensity -= 20;
@@ -261,14 +329,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     const costPerHr = totalDemand * 50; // arbitrary $50/MW
 
     set({
-        nodes: newNodes,
-        metrics: {
-            totalDemand: Math.round(totalDemand),
-            totalCapacity: Math.round(activeGeneration),
-            gridStability: Math.round(stability),
-            carbonIntensity: Math.round(carbonIntensity),
-            costPerHr: Math.round(costPerHr),
-        }
+      nodes: newNodes,
+      metrics: {
+        totalDemand: Math.round(totalDemand),
+        totalCapacity: Math.round(activeGeneration),
+        gridStability: Math.round(stability),
+        carbonIntensity: Math.round(carbonIntensity),
+        costPerHr: Math.round(costPerHr),
+      }
     });
   },
 
