@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useMemo, useCallback, useState, useEffect } from "react";
+import { useRef, useMemo, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
@@ -13,6 +13,7 @@ import { useTheme } from "next-themes";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 const ORIGIN = { latitude: MAP_CENTER.lat, longitude: MAP_CENTER.lng };
+const INITIAL_IDS = new Set(['plant_1', 'sub_north', 'sub_south', 'sub_east', 'sub_west']);
 
 const buildingsLayer: FillExtrusionLayer = {
   id: "3d-buildings",
@@ -38,44 +39,36 @@ const buildingsLayer: FillExtrusionLayer = {
 const NODE_SCALE = 40;
 
 export default function CityMap() {
-  const { nodes, placementMode, addNode } = useSimulationStore();
+  const { nodes, placementMode, addNode, lastPlacedId } = useSimulationStore();
   const { theme } = useTheme();
   const mapRef = useRef<MapRef>(null);
-  const [lastPlacedId, setLastPlacedId] = useState<string | null>(null);
+  const prevPlacedId = useRef<string | null>(null);
 
-  const prevNodeCount = useRef(Object.keys(nodes).length);
   useEffect(() => {
-    const currentIds = Object.keys(nodes);
-    if (currentIds.length > prevNodeCount.current) {
-      const newId = currentIds.find(
-        id => !['plant_1', 'sub_north', 'sub_south', 'sub_east', 'sub_west'].includes(id)
-          && id !== lastPlacedId
-      );
-      if (newId) {
-        const node = nodes[newId];
-        setLastPlacedId(newId);
+    if (lastPlacedId && lastPlacedId !== prevPlacedId.current) {
+      prevPlacedId.current = lastPlacedId;
+      const node = nodes[lastPlacedId];
+      if (!node) return;
+      mapRef.current?.flyTo({
+        center: [node.lng, node.lat],
+        zoom: 17.5,
+        pitch: 65,
+        bearing: Math.random() * 40 - 20,
+        duration: 1800,
+        essential: true,
+      });
+      setTimeout(() => {
         mapRef.current?.flyTo({
           center: [node.lng, node.lat],
-          zoom: 17.5,
-          pitch: 65,
-          bearing: Math.random() * 40 - 20,
-          duration: 1800,
+          zoom: 16,
+          pitch: 60,
+          bearing: 0,
+          duration: 2200,
           essential: true,
         });
-        setTimeout(() => {
-          mapRef.current?.flyTo({
-            center: [node.lng, node.lat],
-            zoom: 16,
-            pitch: 60,
-            bearing: 0,
-            duration: 2200,
-            essential: true,
-          });
-        }, 3000);
-      }
+      }, 3000);
     }
-    prevNodeCount.current = currentIds.length;
-  }, [nodes, lastPlacedId]);
+  }, [lastPlacedId, nodes]);
 
   const handleMapClick = useCallback(
     (e: MapLayerMouseEvent) => {
@@ -142,7 +135,17 @@ export default function CityMap() {
 
 function CityNode({ node, isNew }: { node: GridNode; isNew: boolean }) {
   const groupRef = useRef<THREE.Group>(null);
-  const scaleProgress = useRef(isNew ? 0 : 1);
+  const animating = useRef(false);
+  const scaleProgress = useRef(1);
+  const wasNewRef = useRef(false);
+
+  const shouldAnimate = isNew && !INITIAL_IDS.has(node.id);
+
+  if (shouldAnimate && !wasNewRef.current) {
+    scaleProgress.current = 0;
+    animating.current = true;
+  }
+  wasNewRef.current = shouldAnimate;
 
   const pos = useMemo(
     () => coordsToVector3({ latitude: node.lat, longitude: node.lng }, ORIGIN) as [number, number, number],
@@ -151,22 +154,31 @@ function CityNode({ node, isNew }: { node: GridNode; isNew: boolean }) {
 
   useFrame((_, delta) => {
     if (!groupRef.current) return;
-    if (scaleProgress.current < 1) {
+    if (animating.current && scaleProgress.current < 1) {
       scaleProgress.current = Math.min(1, scaleProgress.current + delta * 1.8);
       const t = scaleProgress.current;
       const ease = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
-      const overshoot = ease > 0.8 ? 1 + (1 - ease) * 0.3 : ease;
-      const s = overshoot * NODE_SCALE;
+      const bounce = ease > 0.8 ? 1 + (1 - ease) * 0.4 : ease;
+      const s = bounce * NODE_SCALE;
       groupRef.current.scale.set(s, s, s);
       groupRef.current.position.set(pos[0], pos[1] + (1 - ease) * NODE_SCALE * 3, pos[2]);
+      if (scaleProgress.current >= 1) {
+        animating.current = false;
+        groupRef.current.scale.set(NODE_SCALE, NODE_SCALE, NODE_SCALE);
+        groupRef.current.position.set(pos[0], pos[1], pos[2]);
+      }
     }
   });
+
+  const initialScale = shouldAnimate && scaleProgress.current < 1
+    ? 0.01
+    : NODE_SCALE;
 
   return (
     <group
       ref={groupRef}
       position={pos}
-      scale={isNew ? [0, 0, 0] : [NODE_SCALE, NODE_SCALE, NODE_SCALE]}
+      scale={[initialScale, initialScale, initialScale]}
     >
       <NodeModel node={node} />
     </group>

@@ -8,22 +8,33 @@ import TopBar from '@/components/TopBar';
 import SettingsPanel from '@/components/SettingsPanel';
 import AIChat from '@/components/AIChat';
 import InfrastructurePalette from '@/components/InfrastructurePalette';
+import SystemDispatch from '@/components/SystemDispatch';
 import dynamic from 'next/dynamic';
 import { MapProvider } from 'react-map-gl/mapbox';
 
 const CityMap = dynamic(() => import('@/components/CityMap'), { ssr: false });
 
 export default function Home() {
-  const { initGrid, tickSim } = useSimulationStore();
+  const { initGrid, tickSim, isPlaying } = useSimulationStore();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   useEffect(() => {
     initGrid();
+  }, [initGrid]);
+
+  useEffect(() => {
+    if (!isPlaying) return;
     const interval = setInterval(() => {
       tickSim();
-    }, 2000);
+    }, 1000);
     return () => clearInterval(interval);
-  }, [initGrid, tickSim]);
+  }, [isPlaying, tickSim]);
+
+  // Run one initial tick to populate dispatch data
+  useEffect(() => {
+    const timer = setTimeout(() => tickSim(), 100);
+    return () => clearTimeout(timer);
+  }, [tickSim]);
 
   return (
     <MapProvider>
@@ -31,6 +42,11 @@ export default function Home() {
         {/* 3D City Map - The App (full viewport) */}
         <div className="absolute inset-0 z-0">
           <CityMap />
+        </div>
+
+        {/* System Dispatch Banner (top, shown when playing) */}
+        <div className="absolute top-0 left-0 right-0 z-20 pointer-events-none">
+          <SystemDispatch />
         </div>
 
         {/* Overlays - Floating UI on top of the simulation */}
