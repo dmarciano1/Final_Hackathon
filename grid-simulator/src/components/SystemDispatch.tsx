@@ -2,7 +2,7 @@
 
 import { useSimulationStore } from "@/store/useSimulationStore";
 import { motion, AnimatePresence } from "framer-motion";
-import { Activity, Zap, Wind, Sun, Atom, Droplets, Battery, Factory, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Activity, Wind, Sun, Atom, Droplets, Battery, Factory, TrendingUp, TrendingDown, Minus } from "lucide-react";
 
 const GEN_COLORS: Record<string, string> = {
   Gas: "#f97316",

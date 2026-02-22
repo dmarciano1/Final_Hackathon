@@ -4,7 +4,7 @@ import { useRef, useMemo, useCallback, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { Line } from "@react-three/drei";
 import * as THREE from "three";
-import Map, { Layer, MapLayerMouseEvent, MapRef } from "react-map-gl/mapbox";
+import Map, { Layer, MapMouseEvent, MapRef } from "react-map-gl/mapbox";
 import type { FillExtrusionLayer } from "mapbox-gl";
 import { Canvas, coordsToVector3 } from "react-three-map";
 import "mapbox-gl/dist/mapbox-gl.css";
@@ -71,7 +71,7 @@ export default function CityMap() {
   }, [lastPlacedId, nodes]);
 
   const handleMapClick = useCallback(
-    (e: MapLayerMouseEvent) => {
+    (e: MapMouseEvent) => {
       if (!placementMode) return;
       addNode(placementMode, e.lngLat.lat, e.lngLat.lng);
     },
